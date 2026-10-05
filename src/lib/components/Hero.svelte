@@ -4,13 +4,19 @@
 	import { site, whatsappLink } from '$lib/config';
 	import { stats } from '$lib/data';
 
-	let mx = $state(50);
-	let my = $state(40);
-
+	// Update CSS variables directly (throttled to one write per frame) instead of
+	// re-rendering through Svelte state on every pointer event.
+	let frame = 0;
 	const onMove = (e: PointerEvent) => {
-		const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-		mx = ((e.clientX - r.left) / r.width) * 100;
-		my = ((e.clientY - r.top) / r.height) * 100;
+		if (e.pointerType !== 'mouse' || frame) return;
+		const el = e.currentTarget as HTMLElement;
+		const { clientX, clientY } = e;
+		frame = requestAnimationFrame(() => {
+			frame = 0;
+			const r = el.getBoundingClientRect();
+			el.style.setProperty('--mx', `${((clientX - r.left) / r.width) * 100}%`);
+			el.style.setProperty('--my', `${((clientY - r.top) / r.height) * 100}%`);
+		});
 	};
 
 	const headline = ['Powering', 'your', 'world'];
@@ -31,11 +37,11 @@
 	<!-- Background layers -->
 	<div class="grid-bg absolute inset-0 -z-20 [mask-image:radial-gradient(ellipse_at_center,black_30%,transparent_75%)]"></div>
 	<div
-		class="pointer-events-none absolute inset-0 -z-10 transition-[background] duration-300"
-		style="background: radial-gradient(600px circle at {mx}% {my}%, rgb(250 204 21 / 0.12), transparent 60%)"
+		class="pointer-events-none absolute inset-0 -z-10"
+		style="background: radial-gradient(600px circle at var(--mx, 50%) var(--my, 40%), rgb(250 204 21 / 0.12), transparent 60%)"
 	></div>
-	<div class="animate-pulse-glow absolute -top-40 -right-40 -z-10 size-[520px] rounded-full bg-volt-500/20 blur-[120px]"></div>
-	<div class="absolute -bottom-40 -left-40 -z-10 size-[460px] rounded-full bg-spark-500/15 blur-[120px]"></div>
+	<div class="absolute -top-40 -right-40 -z-10 size-[520px] rounded-full bg-volt-500/20 blur-[120px] [transform:translateZ(0)]"></div>
+	<div class="absolute -bottom-40 -left-40 -z-10 size-[460px] rounded-full bg-spark-500/15 blur-[120px] [transform:translateZ(0)]"></div>
 
 	<!-- Animated circuit lines -->
 	<svg class="absolute inset-0 -z-10 hidden h-full w-full opacity-30 md:block" viewBox="0 0 1440 900" preserveAspectRatio="none" aria-hidden="true">
@@ -110,7 +116,7 @@
 
 			{#each orbit as o}
 				<div
-					class="glass animate-float absolute {o.pos} flex items-center gap-2 !rounded-2xl px-3.5 py-2.5 text-sm font-medium text-white shadow-xl"
+					class="animate-float absolute {o.pos} flex items-center gap-2 rounded-2xl border border-white/10 bg-ink-800/90 will-change-transform px-3.5 py-2.5 text-sm font-medium text-white shadow-xl"
 					style="animation-delay: {o.delay}"
 				>
 					<span class="grid size-8 place-items-center rounded-lg bg-volt-400/15 text-volt-300">
